@@ -44,10 +44,18 @@ tasksRouter.get('/tasks/:id' , async (req , res) => {
 tasksRouter.post('/update-tasks/:id' , async (req , res) => {
     try
     {
-        const updatedtask = await Task.findByIdAndUpdate(req.params.id , req.body , {new: true , runValidators:true});
-        if(!updatedtask)  return res.status(404).send();
+        const updates = Object.keys(req.body);
 
-        return res.status(200).send(updatedtask);
+        const validKeys = ['description' , 'completed' ];
+        const isValidOp = updates.every((update) => { return validKeys.includes(update) });
+
+        if(!isValidOp)  return res.status(400).send('Invalid updates');
+        const task = await Task.findById(req.params.id);
+        if(!task)  return res.status(404).send();
+        updates.forEach((update) => task[update] = req.body[update]);
+        await task.save();
+
+        return res.status(200).send(task);
     }catch (e) {
         return res.status(400).send(e.toString());
 

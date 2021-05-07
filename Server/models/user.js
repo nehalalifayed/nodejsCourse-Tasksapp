@@ -1,7 +1,8 @@
-const mongoose = require('mongoose');
-const validator = require('validator');
+const mongoose = require('mongoose')
+    , validator = require('validator')
+    , bcrypt = require('bcryptjs')
 
-const User = mongoose.model('User' ,{
+const userSchema = mongoose.Schema({
     name:{
         type:String,
         required:true,
@@ -24,6 +25,7 @@ const User = mongoose.model('User' ,{
     email:{
         type:String ,
         required:true,
+        unique:true,
         validate(value){
             if(!validator.isEmail(value))
             {
@@ -32,6 +34,14 @@ const User = mongoose.model('User' ,{
         }
     }
 });
+
+userSchema.pre('save' , async function(next){
+    const user = this;
+    if(user.isModified('password'))  // To hash the password again.
+    user.password = await bcrypt.hash(user.password , 8);
+    next();
+})
+const User = mongoose.model('User' , userSchema);
 
 
 module.exports = User;

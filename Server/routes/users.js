@@ -1,6 +1,7 @@
 const User = require('../models/user')
     , express = require('express')
     , userrouter = new express.Router()
+    , bcrypt = require('bcryptjs')
 
 
 userrouter.post('/users' , async (req , res) => {
@@ -11,6 +12,20 @@ userrouter.post('/users' , async (req , res) => {
         return res.status(201).send(newuser);
     }catch (e) {
         return  res.status(500).send("Error creating the user.." + e);
+    }
+});
+
+userrouter.post('/logIn' , async (req , res) => {
+    try
+    {
+        const user = await User.findOne({ email: req.body.email});
+        if(!user) throw new Error ("Error in Logging in....")
+
+        const isValid = bcrypt.compare(req.body.password , user.password);
+        if(isValid) return res.status(200).send(user);
+        throw new Error("Error in Logging in")
+    }catch (e) {
+        return  res.status(500).send(e.toString());
     }
 });
 
@@ -40,10 +55,19 @@ userrouter.get('/users/:id' , async (req , res) => {
 userrouter.post('/update-users/:id' , async (req , res) => {
     try
     {
-        const updatedUser = await User.findByIdAndUpdate(req.params.id , req.body , {new: true , runValidators:true});
-        if(!updatedUser)  return res.status(404).send();
+        const updates = Object.keys(req.body);
 
-        return res.status(200).send(updatedUser);
+        const validKeys = ['name' , 'email' , 'password' , 'age'];
+        const isValidOp = updates.every((update) => { return validKeys.includes(update) });
+
+        if(!isValidOp)  return res.status(400).send('Invalid updates');
+
+        const user = await User.findById(req.params.id);
+        if(!user)  return res.status(404).send();
+        updates.forEach((update) => user[update] = req.body[update]);
+        await user.save();
+
+        return res.status(200).send(user);
     }catch (e) {
         return res.status(400).send(e.toString());
 
