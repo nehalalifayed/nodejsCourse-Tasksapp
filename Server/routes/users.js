@@ -2,6 +2,7 @@ const User = require('../models/user')
     , express = require('express')
     , userrouter = new express.Router()
     , bcrypt = require('bcryptjs')
+    , auth = require('../middlewares/auth')
 
 
 userrouter.post('/users' , async (req , res) => {
@@ -9,50 +10,74 @@ userrouter.post('/users' , async (req , res) => {
     try
     {
         await newuser.save();
-        return res.status(201).send(newuser);
+        const token = await newuser.generateToken();
+
+        newuser= newuser.toObject();
+        delete newuser['tokens'];
+        delete newuser.password;
+
+        return res.status(201).send({newuser , token});
     }catch (e) {
+
         return  res.status(500).send("Error creating the user.." + e);
     }
 });
 
-userrouter.post('/logIn' , async (req , res) => {
+userrouter.post('/users/logIn' , async (req , res) => {
     try
     {
-        const user = await User.findOne({ email: req.body.email});
+        let user = await User.findOne({ email: req.body.email});
         if(!user) throw new Error ("Error in Logging in....")
 
         const isValid = bcrypt.compare(req.body.password , user.password);
-        if(isValid) return res.status(200).send(user);
+        if(isValid)
+        {
+          
+            const token = await user.generateToken();
+            user= user.toObject();
+            delete user['tokens'];
+            delete user.password;
+          
+            return res.status(200).send({user , token});
+        }
         throw new Error("Error in Logging in")
     }catch (e) {
-        return  res.status(500).send(e.toString());
+        return  res.status(400).send(e.toString());
     }
 });
 
-userrouter.get('/users' , async (req , res) => {
+userrouter.post('/users/logout', auth ,  async (req , res) => {
     try
     {
-        const usrs  =await User.find({})
-        return res.status(200).send(usrs);
+        req.user.tokens = req.user.tokens.filter((token) => {
+            return token.token !== req.token;
+        });
+        await req.user.save();
+        return res.status(200).send("logged out successfully");
+    }catch(e)
+    {
+        return res.status(500).send("something went wrong");
     }
-    catch(error){
-        res.status(500).send("Error getting the list of the users from the database");
-    }
-});
+ });
 
-userrouter.get('/users/:id' , async (req , res) => {
-    const userID = req.params.id;
+ userrouter.post('/users/logoutAll', auth ,  async (req , res) => {
     try
     {
-        const user = await User.findById(userID);
-        return res.status(200).send(user);
+        req.user.tokens = [];
+        await req.user.save();
+        return res.status(200).send("logged out successfully from all sessions.");
+    }catch(e)
+    {
+        return res.status(500).send("something went wrong");
     }
-    catch(error){
-        return  res.status(500).send("Error getting that user from the database");
-    }
+ });
+
+userrouter.get('/users/me', auth ,  async (req , res) => {
+   return res.status(200).send(req.user);
 });
 
-userrouter.post('/update-users/:id' , async (req , res) => {
+
+userrouter.post('/update-users/me' , auth, async (req , res) => {
     try
     {
         const updates = Object.keys(req.body);
@@ -62,22 +87,20 @@ userrouter.post('/update-users/:id' , async (req , res) => {
 
         if(!isValidOp)  return res.status(400).send('Invalid updates');
 
-        const user = await User.findById(req.params.id);
-        if(!user)  return res.status(404).send();
-        updates.forEach((update) => user[update] = req.body[update]);
-        await user.save();
+        updates.forEach((update) => req.user[update] = req.body[update]);
+        await req.user.save();
 
-        return res.status(200).send(user);
+        return res.status(200).send(req.user);
     }catch (e) {
         return res.status(400).send(e.toString());
 
     }
 });
 
-userrouter.delete('/users/:id' ,  async (req , res) => {
+userrouter.delete('/users/me' , auth,  async (req , res) => {
     try
     {
-        const  DeletedUSer = await User.findByIdAndDelete(req.params.id);
+        const  DeletedUSer = await User.findByIdAndDelete(req.user._id);
         if(!DeletedUSer)     return res.status(404).send();
         return res.status(200).send(DeletedUSer);
     }

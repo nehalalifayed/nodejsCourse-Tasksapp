@@ -1,6 +1,7 @@
 const mongoose = require('mongoose')
     , validator = require('validator')
     , bcrypt = require('bcryptjs')
+    , jwt = require('jsonwebtoken')
 
 const userSchema = mongoose.Schema({
     name:{
@@ -23,7 +24,7 @@ const userSchema = mongoose.Schema({
         }
     },
     email:{
-        type:String ,
+        type:String , 
         required:true,
         unique:true,
         validate(value){
@@ -32,9 +33,26 @@ const userSchema = mongoose.Schema({
                 throw new Error ("Invalid email address!!");
             }
         }
-    }
+    },
+    tokens: [{
+        token: 
+        {
+            type:String,
+            required:true
+        }
+    }]
 });
 
+userSchema.methods.generateToken = async function ()
+{
+    const user = this;
+    const token = jwt.sign({ _id: user._id.toString()} , 'Thisisarandomkey');
+
+    user.tokens = user.tokens.concat({token});
+    await user.save();
+
+    return token;
+}
 userSchema.pre('save' , async function(next){
     const user = this;
     if(user.isModified('password'))  // To hash the password again.
