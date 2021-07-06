@@ -43,6 +43,15 @@ const userSchema = mongoose.Schema({
     }]
 });
 
+// relationship between tasks assosiated with the user.
+// virtual because tasks are not stored in the db as variable.
+// don't forget to use populate function to populate tasks.  
+userSchema.virtual('tasks' , {
+    ref: "Task" , 
+    localField: '_id',   // the users id
+    foreignField:'author' // the field from tasks model
+})
+
 userSchema.methods.generateToken = async function ()
 {
     const user = this;

@@ -3,6 +3,7 @@ const User = require('../models/user')
     , userrouter = new express.Router()
     , bcrypt = require('bcryptjs')
     , auth = require('../middlewares/auth')
+    , Task = require('../models/task')
 
 
 userrouter.post('/users' , async (req , res) => {
@@ -102,6 +103,8 @@ userrouter.delete('/users/me' , auth,  async (req , res) => {
     {
         const  DeletedUSer = await User.findByIdAndDelete(req.user._id);
         if(!DeletedUSer)     return res.status(404).send();
+
+        await Task.deleteMany({author: req.user._id});
         return res.status(200).send(DeletedUSer);
     }
     catch(e)
