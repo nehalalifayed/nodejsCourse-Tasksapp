@@ -4,6 +4,41 @@ const User = require('../models/user')
     , bcrypt = require('bcryptjs')
     , auth = require('../middlewares/auth')
     , Task = require('../models/task')
+    , fs = require('fs')
+
+    , multer = require('multer')
+
+// const upload = multer({
+//     dest : "./Server/profileImages" , 
+//     limits: {
+//         fileSize : 1000000
+//     } , 
+//     fileFilter(req , file , cb)
+//     {
+//         if(!file.originalname.match(/\.(png|jpg|jpeg)$/)) return cb(new Error ('images with the following extensions : jpg , jpeg , png are the ones allowed'));
+
+//         cb(undefined , true)
+//     }
+// })
+
+
+// SET STORAGE
+var storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+      cb(null, './Server/profileImages')
+    },
+    filename: function (req, file, cb) {
+      cb(null, Date.now() + file.originalname)
+    }
+  })
+
+var upload = multer({ storage: storage , limits: {  fileSize : 1000000 } , 
+fileFilter(req , file , cb)
+{
+    if(!file.originalname.match(/\.(png|jpg|jpeg)$/)) return cb(new Error ('images with the following extensions : jpg , jpeg , png are the ones allowed'));
+
+    cb(undefined , true)
+} })
 
 
 userrouter.post('/users' , async (req , res) => {
@@ -77,6 +112,40 @@ userrouter.get('/users/me', auth ,  async (req , res) => {
    return res.status(200).send(req.user);
 });
 
+userrouter.post('/users/me/avatar', auth , upload.single('avatar') ,  async (req , res) => {
+     await User.updateOne({_id: req.user._id} , {avatar : req.file.path}); 
+   
+    return res.status(200).send();
+ } ,  (error , req , res , next )=> {
+     return res.status(400).send({error : error.message});
+ });
+ 
+
+ userrouter.delete('/users/me/avatar', auth ,  async (req , res) => {
+if(req.user.avatar)
+{    fs.unlink(req.user.avatar, function(err) {
+        if (err) { throw err } else {
+          console.log("Successfully deleted the file.")
+        }
+      }) 
+
+}   
+let user =  await User.updateOne({_id: req.user._id} , {avatar : null});
+return res.status(200).send();
+});
+
+
+userrouter.get('/users/:id/avatar', auth ,  async (req , res) => {
+    try{
+        let user =  await User.findOne({_id: req.params.id});
+        if (user) return res.status(200).send(user.avatar);
+        else throw new Error();
+    }catch(e)
+    {
+        return res.status(500).send();
+    }
+    
+});
 
 userrouter.post('/update-users/me' , auth, async (req , res) => {
     try

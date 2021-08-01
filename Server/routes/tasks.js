@@ -21,7 +21,17 @@ tasksRouter.get('/tasks' , auth , async (req , res) => {
 
     try
     {
-        const tasks = await Task.find({author: req.user._id});
+        let completedStatus = (req.query.completed) ? req.query.completed : false;
+        let sortBy = {};
+        if(req.query.sort)
+        {
+            let parts = req.query.sort.split(":");
+            sortBy[parts[0]]= parts[1] === "desc"? -1:1
+        }
+     
+        const tasks = await Task.find({author: req.user._id , completed: completedStatus}).limit(parseInt(req.query.limit))
+        .skip(parseInt(req.query.skip)).sort(sortBy);
+        
         return res.status(200).send(tasks);
     }catch(error)
     {

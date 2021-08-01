@@ -40,8 +40,12 @@ const userSchema = mongoose.Schema({
             type:String,
             required:true
         }
-    }]
-});
+    }] ,  
+    avatar:
+    {
+        type:String
+    }
+} , {timestamps: true});
 
 // relationship between tasks assosiated with the user.
 // virtual because tasks are not stored in the db as variable.
