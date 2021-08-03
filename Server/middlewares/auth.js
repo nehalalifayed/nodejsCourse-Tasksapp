@@ -5,7 +5,7 @@ const User = require('../models/user')
         try
         {
             const token = req.headers['authorization'];
-            const decodedToken = await jwt.verify(token, 'Thisisarandomkey');
+            const decodedToken = await jwt.verify(token, process.env.JWT_SECRETKEY);
             const user = await User.findOne({_id: decodedToken._id , 'tokens.token': token});
         
             if(!user) throw new Error();

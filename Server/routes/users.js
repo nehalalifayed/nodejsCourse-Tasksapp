@@ -5,6 +5,7 @@ const User = require('../models/user')
     , auth = require('../middlewares/auth')
     , Task = require('../models/task')
     , fs = require('fs')
+    , sendMail = require('../helpers/sendEmail')
 
     , multer = require('multer')
 
@@ -52,6 +53,8 @@ userrouter.post('/users' , async (req , res) => {
         delete newuser['tokens'];
         delete newuser.password;
 
+        await sendMail(newuser.email , newuser.name);
+        
         return res.status(201).send({newuser , token});
     }catch (e) {
 
